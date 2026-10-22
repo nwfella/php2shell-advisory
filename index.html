@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PHP2Shell — CVE-2026-109618 &amp; CVE-2026-109619: Plain-English Brief &amp; Patch Runbook</title>
+<meta name="description" content="Two critical PHP core RCEs (php2shell) disclosed 21 Oct 2026. Affected versions, exact fixed releases, per-platform patch commands, verification steps, interim mitigations and detection guidance.">
+<meta name="author" content="nwfella">
+<meta name="robots" content="index,follow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230b1020'/%3E%3Ctext x='32' y='44' font-family='monospace' font-size='30' font-weight='bold' text-anchor='middle' fill='%23ff5c5c'%3EP%3C/text%3E%3C/svg%3E">
+<style>
+  :root{
+    --bg:#0a0e17;
+    --bg2:#0f1524;
+    --card:#121a2b;
+    --card2:#162034;
+    --line:#22304a;
+    --txt:#e6ecf7;
+    --dim:#94a3b8;
+    --dim2:#64748b;
+    --red:#ff5c5c;
+    --amber:#ffb020;
+    --green:#3ddc97;
+    --blue:#5aa9ff;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--txt);
+    font-family:var(--sans);font-size:16px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--blue);text-decoration:none;border-bottom:1px solid rgba(90,169,255,.3)}
+  a:hover{border-bottom-color:var(--blue)}
+  .wrap{max-width:940px;margin:0 auto;padding:0 22px}
+  header.hero{
+    border-bottom:1px solid var(--line);
+    background:radial-gradient(900px 380px at 15% -10%,rgba(255,92,92,.13),transparent 70%),var(--bg2);
+    padding:52px 0 38px;
+  }
+  .kicker{
+    font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--red);margin:0 0 14px;
+  }
+  h1{font-size:clamp(28px,4.4vw,44px);line-height:1.15;margin:0 0 14px;letter-spacing:-.02em}
+  h1 code{font-family:var(--mono);font-size:.62em;color:var(--amber);background:rgba(255,176,32,.1);
+    padding:3px 8px;border-radius:6px;border:1px solid rgba(255,176,32,.25);vertical-align:middle}
+  .lede{font-size:18px;color:#c3cfe2;margin:0 0 22px;max-width:74ch}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:0}
+  .chip{
+    font-family:var(--mono);font-size:12.5px;padding:5px 11px;border-radius:999px;
+    border:1px solid var(--line);background:var(--card);color:var(--dim);white-space:nowrap;
+  }
+  .chip.crit{border-color:rgba(255,92,92,.5);background:rgba(255,92,92,.1);color:#ffb3b3}
+  .chip.warn{border-color:rgba(255,176,32,.45);background:rgba(255,176,32,.09);color:#ffd489}
+  .chip.ok{border-color:rgba(61,220,151,.4);background:rgba(61,220,151,.08);color:#9df0c8}
+
+  main{padding:40px 0 70px}
+  section{margin:0 0 46px;scroll-margin-top:20px}
+  h2{
+    font-size:clamp(21px,2.6vw,27px);margin:0 0 8px;letter-spacing:-.01em;
+    display:flex;align-items:baseline;gap:11px;
+  }
+  h2 .num{
+    font-family:var(--mono);font-size:13px;color:var(--dim2);font-weight:400;
+    border:1px solid var(--line);border-radius:6px;padding:2px 7px;flex:none;
+  }
+  h3{font-size:17px;margin:26px 0 8px;color:#dae3f2}
+  h4{font-size:15px;margin:18px 0 6px;color:#c9d5e8;font-family:var(--mono)}
+  p{margin:0 0 14px}
+  ul,ol{margin:0 0 14px;padding-left:22px}
+  li{margin:0 0 7px}
+  .sub{color:var(--dim);margin:-2px 0 18px}
+  code{font-family:var(--mono);font-size:.886em;background:rgba(148,163,184,.12);
+    padding:1.5px 5px;border-radius:4px;color:#d7e3f5}
+  pre{
+    position:relative;background:#070b13;border:1px solid var(--line);border-radius:10px;
+    padding:14px 16px;overflow-x:auto;margin:0 0 16px;font-size:13.4px;line-height:1.6;
+  }
+  pre code{background:none;padding:0;color:#cbd8ec;font-size:inherit;white-space:pre}
+  pre .c{color:var(--dim2)}
+  pre .hl{color:var(--amber)}
+  .copy{
+    position:absolute;top:8px;right:8px;font-family:var(--mono);font-size:11px;
+    background:var(--card2);color:var(--dim);border:1px solid var(--line);
+    border-radius:6px;padding:4px 9px;cursor:pointer;opacity:0;transition:.15s;
+  }
+  pre:hover .copy{opacity:1}
+  .copy:hover{color:var(--txt);border-color:var(--dim2)}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:20px 22px;margin:0 0 18px;
+  }
+  .card.tight{padding:16px 18px}
+  .callout{
+    border-radius:10px;padding:15px 18px;margin:0 0 18px;border:1px solid;font-size:15.4px;
+  }
+  .callout strong{display:block;margin-bottom:3px;font-size:14px;letter-spacing:.02em}
+  .callout p:last-child{margin-bottom:0}
+  .callout.bad{border-color:rgba(255,92,92,.45);background:rgba(255,92,92,.07)}
+  .callout.bad strong{color:#ff9d9d}
+  .callout.warn{border-color:rgba(255,176,32,.4);background:rgba(255,176,32,.06)}
+  .callout.warn strong{color:#ffc04d}
+  .callout.good{border-color:rgba(61,220,151,.38);background:rgba(61,220,151,.06)}
+  .callout.good strong{color:#6fe8b4}
+  .callout.info{border-color:rgba(90,169,255,.35);background:rgba(90,169,255,.06)}
+  .callout.info strong{color:#8cc5ff}
+
+  .scroll{overflow-x:auto;margin:0 0 18px;border:1px solid var(--line);border-radius:10px}
+  table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:520px}
+  th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{background:var(--bg2);font-family:var(--mono);font-size:12px;letter-spacing:.06em;
+     text-transform:uppercase;color:var(--dim);font-weight:500}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:rgba(148,163,184,.04)}
+  td code{font-size:.9em}
+  .vuln{color:#ff9d9d;font-family:var(--mono);font-size:13px;white-space:nowrap}
+  .fixed{color:#6fe8b4;font-family:var(--mono);font-size:13px;white-space:nowrap}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr}}
+
+  .step{
+    display:flex;gap:14px;padding:14px 0;border-bottom:1px solid rgba(34,48,74,.6);
+  }
+  .step:last-child{border-bottom:none;padding-bottom:0}
+  .step .n{
+    flex:none;width:26px;height:26px;border-radius:50%;background:rgba(255,92,92,.14);
+    border:1px solid rgba(255,92,92,.45);color:#ffb3b3;font-family:var(--mono);
+    font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:2px;
+  }
+  .step .b{flex:1;min-width:0}
+  .step .b strong{display:block;margin-bottom:2px;color:#e9effa}
+  .step .b p{margin:0;font-size:14.6px;color:var(--dim)}
+
+  footer{
+    border-top:1px solid var(--line);padding:28px 0 46px;color:var(--dim2);
+    font-size:13.4px;background:var(--bg2);
+  }
+  footer p{margin:0 0 9px}
+  footer strong{color:var(--dim)}
+  .toc{
+    background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:18px 22px;margin:0 0 34px;
+  }
+  .toc h3{margin:0 0 10px;font-size:12px;font-family:var(--mono);letter-spacing:.1em;
+    text-transform:uppercase;color:var(--dim2);font-weight:500}
+  .toc ol{margin:0;padding-left:20px;columns:2;column-gap:28px}
+  @media(max-width:640px){.toc ol{columns:1}}
+  .toc li{margin:0 0 5px;font-size:14.4px;break-inside:avoid}
+  .toc a{border-bottom:none;color:#b9c8de}
+  .toc a:hover{color:var(--blue)}
+  .meta{font-family:var(--mono);font-size:12.4px;color:var(--dim2);margin:0 0 20px}
+  .srcline{font-size:14px;word-break:break-word}
+  .srcline li{margin-bottom:9px}
+  @media print{
+    body{background:#fff;color:#111}
+    pre,.card,.callout{background:#f6f7f9;border-color:#ccc}
+    header.hero{background:#fff}
+    .copy{display:none}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <p class="kicker">Security advisory · 22 October 2026</p>
+    <h1>PHP2Shell: two critical RCEs in PHP itself — <code>CVE-2026-109618</code> <code>CVE-2026-109619</code></h1>
+    <p class="lede">
+      On <strong>21 October 2026</strong> the PHP team shipped emergency releases fixing two
+      memory-safety bugs in the PHP engine. They allow <strong>unauthenticated remote code
+      execution</strong> — the application on top does not have to be broken. Every PHP release
+      back to 5.4 is affected by at least one of them. If you run a PHP site, patch it and
+      restart the workers. That is the whole message; the rest of this page is how.
+    </p>
+    <p class="chips">
+      <span class="chip crit">CVSS v4.0 9.2 critical · both</span>
+      <span class="chip crit">NVD v3.1 9.8</span>
+      <span class="chip warn">Exploitation attempts observed</span>
+      <span class="chip ok">Fixed: 8.5.12 · 8.4.27 · 8.3.36 · 8.2.35</span>
+      <span class="chip">No authentication required</span>
+    </p>
+  </div>
+</header>
+
+<main>
+<div class="wrap">
+
+  <div class="toc">
+    <h3>On this page</h3>
+    <ol>
+      <li><a href="#tldr">Do this now</a></li>
+      <li><a href="#affected">Am I affected?</a></li>
+      <li><a href="#bugs">What actually broke</a></li>
+      <li><a href="#timeline">Timeline</a></li>
+      <li><a href="#patch">Patch runbooks by platform</a></li>
+      <li><a href="#verify">Verify the fix took</a></li>
+      <li><a href="#mitigate">If you cannot patch today</a></li>
+      <li><a href="#detect">Detect exploitation attempts</a></li>
+      <li><a href="#compromised">If you think you were hit</a></li>
+      <li><a href="#eol">Stuck on an EOL branch</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#sources">Primary sources</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <section id="tldr">
+    <h2><span class="num">01</span> Do this now</h2>
+    <p class="sub">In order. Steps 1–3 are the ones that stop exploitation.</p>
+
+    <div class="card">
+      <div class="step">
+        <div class="n">1</div>
+        <div class="b">
+          <strong>Find every PHP binary that serves traffic</strong>
+          <p>Not just <code>php -v</code>. PHP is also inside containers, control panels (cPanel/EA,
+          Plesk, CloudLinux alt-php, DirectAdmin), vendor appliances, Windows apps that ship
+          <code>php-cgi.exe</code>, and CI images. Check the SAPI that actually answers requests —
+          FPM, mod_php, php-cgi, FrankenPHP or LiteSpeed.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div class="b">
+          <strong>Update to the fixed release for your branch</strong>
+          <p>8.5.12 · 8.4.27 · 8.3.36 · 8.2.35 — or your distro's backported package with the same
+          CVE in its changelog. Fix internet-facing hosts first.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div class="b">
+          <strong>Restart every PHP worker</strong>
+          <p>This is the step people skip. Installing the package replaces the file on disk; the
+          old code is still in memory until FPM children / Apache workers are recycled. A patched
+          package with un-restarted workers is still a vulnerable server.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div class="b">
+          <strong>Turn off session upload progress, even after patching</strong>
+          <p>PHP's own advice: this feature is rarely used and barely tested, and it is the
+          best-documented path into bug #2. <code>session.upload_progress.enabled=0</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">5</div>
+        <div class="b">
+          <strong>Cannot patch before the weekend?</strong>
+          <p>Then take the app off the public internet or put it behind a VPN/WAF — CERT-EU and the
+          NSA both recommend isolation for anything that can't be updated immediately. Configuration
+          tweaks below reduce exposure but do not make a server safe.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout bad">
+      <strong>There is no configuration that fully mitigates this</strong>
+      <p>Both PHP advisories say it in capitals-of-intent: updating is the <em>only</em> complete
+      mitigation. Every ini setting discussed later closes a specific demonstrated path. A server
+      with all of them applied is still a server with a use-after-free in its request engine.</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="affected">
+    <h2><span class="num">02</span> Am I affected?</h2>
+    <p class="sub">If your PHP version is in the left column, yes — regardless of what the application does.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>PHP branch</th><th>Vulnerable</th><th>Fixed in</th><th>Notes</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>8.5</td><td class="vuln">&lt; 8.5.12</td><td class="fixed">8.5.12</td><td>Also set <code>fatal_error_backtraces=0</code> if unpatched — the confirmed mod_php exploit uses it.</td></tr>
+          <tr><td>8.4</td><td class="vuln">&lt; 8.4.27</td><td class="fixed">8.4.27</td><td>Current stable. Upgrade.</td></tr>
+          <tr><td>8.3</td><td class="vuln">&lt; 8.3.36</td><td class="fixed">8.3.36</td><td>Upgrade.</td></tr>
+          <tr><td>8.2</td><td class="vuln">&lt; 8.2.35</td><td class="fixed">8.2.35</td><td><strong>EOL 31 Dec 2026.</strong> Patch now, plan the move.</td></tr>
+          <tr><td>8.1 / 8.0 / 7.4</td><td class="vuln">all</td><td class="fixed">source backports only</td><td>No official release. Minimal backports on php-src branches for people building from source, or use your distro/LTS vendor's package.</td></tr>
+          <tr><td>5.4 – 7.3</td><td class="vuln">all</td><td class="fixed">none</td><td>No fix from the PHP project. Upgrade, or rely on a vendor that backports (often for a fee).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Risk by server setup</h3>
+    <p>Both bugs are in the engine, so the SAPI — not your framework — decides how easy this is.</p>
+
+    <div class="scroll">
+      <table>
+        <thead>
+          <tr><th>SAPI</th><th>Status per PHP's advisory</th><th>What it means</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Apache mod_php</strong></td>
+            <td class="vuln">Demonstrated RCE</td>
+            <td>Highest risk. A single unauthenticated request can trigger it <em>before</em> any application code runs. No app-level control helps.</td>
+          </tr>
+          <tr>
+            <td><strong>PHP-FPM</strong></td>
+            <td class="vuln">Susceptible; partial exploit shown</td>
+            <td>FPM kills the child when request startup fails, which blocks one path. The session-upload-progress path was validated against FPM and depends on a suitable operation in your app.</td>
+          </tr>
+          <tr>
+            <td><strong>FrankenPHP</strong></td>
+            <td class="vuln">Likely susceptible</td>
+            <td>Like mod_php it runs shutdown unconditionally — application-independent attacks are likely.</td>
+          </tr>
+          <tr>
+            <td><strong>LSAPI / LiteSpeed</strong></td>
+            <td class="vuln">Likely, unvalidated</td>
+            <td>Models FPM behavior; application-specific exploits likely.</td>
+          </tr>
+          <tr>
+            <td><strong>php-cgi</strong></td>
+            <td class="vuln">Affected</td>
+            <td>Named explicitly in the PHP advisory as at-risk.</td>
+          </tr>
+          <tr>
+            <td><strong>CLI only</strong> <span class="chip" style="font-size:11px">e.g. cron scripts</span></td>
+            <td class="fixed">Not the attack surface described</td>
+            <td>Both bugs are reached through HTTP request handling. A box running PHP only from cron isn't exposed the same way — but it will be the moment it serves a request.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <strong>The application does not matter</strong>
+      <p>Wiz Research demonstrated remote code execution without authentication against stock
+      WordPress, Drupal and Joomla containers — and stated that a plain "Hello World" PHP script on
+      an affected version is vulnerable. Updating WordPress, Laravel, Drupal, a theme or a plugin
+      does <em>nothing</em> for this. <code>composer update</code> does nothing for this. The bug is
+      below your code.</p>
+    </div>
+
+    <div class="callout info">
+      <strong>Memory disclosure is a separate, quieter problem</strong>
+      <p>Both issues can leak process memory — passwords, session tokens, API keys and TLS
+      certificates belonging to <em>other</em> requests on the same worker — without ever achieving
+      code execution. A box that shows no shell still may have leaked credentials.</p>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="bugs">
+    <h2><span class="num">03</span> What actually broke</h2>
+    <p class="sub">Both are memory-safety bugs in parts of PHP every request touches: memory management and error handling.</p>
+
+    <h3>CVE-2026-109618 — RCE via OOM corruption</h3>
+    <p>
+      PHP enforces your <code>memory_limit</code> by calling <code>longjmp()</code>: a non-local jump
+      that abandons the request wherever it happens to be. In some contexts PHP has already made
+      request memory reachable <em>before</em> fully initialising it. If an allocation then fails,
+      that early exit is not accounted for and the request memory is left in an invalid state.
+      Shutdown then reads or branches on it — and the failed allocation doesn't even have to be
+      related to that memory.
+    </p>
+    <p>Three multipart-parsing quirks let an attacker reach OOM while staying inside the apparent limits:</p>
+    <ul>
+      <li>A multipart request <strong>without a usable <code>Content-Length</code></strong> can pass the initial <code>post_max_size</code> check and keep sending decoded body data.</li>
+      <li>A multipart part can carry an <strong>unlimited number of headers</strong>, and PHP's in-memory representation of them costs far more than their wire size.</li>
+      <li><strong>Empty file controls</strong> don't count toward <code>max_file_uploads</code> but still allocate metadata arrays; nested field names multiply that work.</li>
+    </ul>
+    <p>
+      The fix removes <code>longjmp()</code> for OOM entirely: a graceful "soft OOM" is deferred to the
+      next VM safe point, and a hard <code>_exit()</code> fires above a second, higher threshold. Shutdown
+      never sees invalid state.
+    </p>
+
+    <h3>CVE-2026-109619 — RCE via stale global state</h3>
+    <p>
+      A PHP worker handles requests one after another. Some global state (error, session, object and
+      extension state) lives in the worker but points at memory owned by the request that created it.
+      That state has to be reset before the request's memory is released. When a fatal error or OOM
+      abandons an operation before it performs its matching reset, the heap is freed while the worker
+      still references it — a use-after-free.
+    </p>
+    <p>Exploiting it needs two halves in two requests on the same worker:</p>
+    <ul>
+      <li><strong>Producer</strong> — an operation that publishes request-owned state globally and then dies: parse/compile failure, uncaught error, failed <code>require</code>, <code>Maximum execution time exceeded</code>, or OOM.</li>
+      <li><strong>Consumer</strong> — an operation in the next request that touches that state <em>before</em> normal initialisation overwrites it.</li>
+    </ul>
+    <p>Two consumers are confirmed:</p>
+    <ul>
+      <li><strong>INI diagnostics during startup.</strong> An invalid or deprecated setting warning is raised before PHP decides whether to display or log it — so <code>error_reporting</code>, <code>display_errors</code> and the <code>@</code> operator give you <em>zero</em> protection. With mod_php this is reachable through <code>.htaccess</code> and <code>php_value</code>/<code>php_admin_*</code>; with FPM, through <code>PHP_VALUE</code>/<code>PHP_ADMIN_VALUE</code> passed by nginx or <code>mod_proxy_fcgi</code> — which is exactly what many hosting panels do for every site.</li>
+      <li><strong>Session upload progress.</strong> It reaches session handling before ordinary session initialisation, so it can consume session state left by an interrupted request. Enabled by default, and it needs no <code>session_start()</code> call from your app.</li>
+    </ul>
+    <div class="callout bad">
+      <strong>The single strongest confirmed case</strong>
+      <p>On PHP 8.5 with <code>fatal_error_backtraces</code> enabled, fatal-error reporting stores a
+      request-owned backtrace that shutdown never resets. That is the basis of the confirmed mod_php
+      exploit. If you are on 8.5 and cannot patch immediately, this is the first knob to turn off.</p>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="timeline">
+    <h2><span class="num">04</span> Timeline — why this landed a day early</h2>
+    <div class="scroll">
+      <table>
+        <thead><tr><th style="width:150px">When (UTC)</th><th>What happened</th></tr></thead>
+        <tbody>
+          <tr><td>20 Oct</td><td>A Hacker News post claims two PHP RCEs rated CVSS 10.0 with the two CVE IDs, scheduled for 22 October disclosure. The poster admits "source: trust me, bro". The post is later deleted.</td></tr>
+          <tr><td>20 Oct</td><td>research (watchTowr et al.) confirm the bugs are real. PHP publishes an <em>advance notice</em>: two critical vulnerabilities, CVSS v4.0 9.2, release scheduled 21 Oct 14:00 UTC — reserving the right to ship early if details go public.</td></tr>
+          <tr><td>21 Oct ~13:30</td><td>PHP releases 8.5.12, 8.4.27, 8.3.36 and 8.2.35. Advisories published ~13:34; CVE records ~13:48.</td></tr>
+          <tr><td>21 Oct</td><td>CERT-EU publishes advisory 2026-018. The US NSA issues a short statement advising organisations that cannot update immediately to take affected systems offline.</td></tr>
+          <tr><td>21 Oct ~14:19</td><td>watchTowr reports observing active exploitation <em>attempts</em> against both CVEs. Cloudflare reports attack traffic and attackers mutating payloads around its WAF rules, which it enabled by default before the patch. Hadrian reports attempts at scale via the session upload-progress path.</td></tr>
+          <tr><td>22 Oct</td><td>No confirmed successful compromise of a specific server has been publicly reported. Proofs of concept are circulating; assume exploitation continues and improves.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout info">
+      <strong>Two numbers, one bug</strong>
+      <p>The leaked "CVSS 10.0" was never PHP's score. PHP and NVD's v4.0 score is <strong>9.2</strong>.
+      NVD also publishes a v3.1 score of <strong>9.8</strong>; Red Hat rates it <strong>8.1 / Important</strong>
+      because its default deployments use FPM rather than mod_php. The high attack-complexity component
+      in the v4.0 vector (<code>AC:H</code>) is what separates 9.2 from 10 — exploitation needs precise
+      heap shaping, not just a request. That lowers reliability per attempt; it does not lower the
+      need to patch, because attempts can simply be repeated.</p>
+    </div>
+    <div class="callout warn">
+      <strong>Not yet in CISA KEV</strong>
+      <p>As of KEV catalog version 2026.10.21 (2026-10-21T14:04Z), neither CVE is listed. That is a
+      statement about the catalog's update cycle, not about safety — active attempts were already
+      being observed within an hour of release.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="patch">
+    <h2><span class="num">05</span> Patch runbooks by platform</h2>
+    <p class="sub">Check your actual version first, then run the block that matches your host.</p>
+
+<pre><code><span class="c"># The version serving traffic is what matters, not the CLI one.</span>
+php -v
+php-fpm -v 2&gt;/dev/null; php-fpm8.4 -v 2&gt;/dev/null
+apache2ctl -M 2&gt;/dev/null | grep -i php        <span class="c"># mod_php present?</span>
+ps aux | grep -E 'php-fpm|php-cgi|lsphp|frankenphp' | grep -v grep
+
+<span class="c"># And directly from a served page (most reliable):</span>
+<span class="c">#   echo '&lt;?php echo PHP_VERSION;' &gt; /var/www/html/_v.php</span></code></pre>
+
+    <h3>Debian 12 (bookworm) and Debian 13 (trixie)</h3>
+<pre><code>sudo apt update
+sudo apt list --upgradable 2&gt;/dev/null | grep -i php
+sudo apt install --only-upgrade php8.2-*        <span class="c"># bookworm</span>
+sudo apt install --only-upgrade php8.4-*        <span class="c"># trixie</span>
+<span class="c"># or simply:</span>
+sudo apt full-upgrade -y
+
+sudo systemctl restart php8.2-fpm    <span class="c"># or php8.4-fpm</span>
+sudo systemctl restart apache2       <span class="c"># if using mod_php</span></code></pre>
+    <p>
+      Fixed packages: <code>php8.4</code> <strong>8.4.27-1~deb13u1</strong> (DSA-6574-1, trixie) and
+      <code>php8.2</code> <strong>8.2.35-1~deb12u1</strong> (DLA-4848-1, bookworm). At time of writing,
+      Debian's <code>forky</code>/<code>sid</code> were still marked unfixed — if you track unstable,
+      check the tracker before assuming your version is clean.
+    </p>
+
+    <h3>Ubuntu 22.04 / 24.04 / 25.10 / 26.04</h3>
+<pre><code>sudo apt update
+sudo apt install --only-upgrade 'php8.3-*'      <span class="c"># noble 24.04</span>
+sudo apt install --only-upgrade 'php8.1-*'      <span class="c"># jammy 22.04</span>
+sudo systemctl restart php8.3-fpm &amp;&amp; sudo systemctl reload apache2</code></pre>
+    <p>
+      Ubuntu published <strong>USN-8948-1</strong> and <strong>USN-8948-2</strong> on 21 October. Fixed
+      builds include <code>php8.3 8.3.6-0ubuntu0.24.04.13</code> (noble),
+      <code>php8.1 8.1.2-1ubuntu2.28</code> (jammy), and <code>php8.5</code> on 25.10/26.04. Older
+      releases (20.04 and earlier) are fixed through Extended Security Maintenance — Ubuntu Pro only.
+    </p>
+
+    <h3>RHEL 9 / 10, AlmaLinux, Rocky, CentOS Stream</h3>
+<pre><code>sudo dnf check-update --security
+sudo dnf upgrade-minimal --security -y
+sudo dnf update php\* -y
+
+sudo systemctl restart php-fpm
+sudo systemctl restart httpd        <span class="c"># mod_php</span></code></pre>
+    <p>Red Hat errata published 21 October:</p>
+    <ul>
+      <li><strong>RHEL 10</strong> — RHSA-2026:87070 (<code>php</code>), RHSA-2026:87071 (<code>php8.4</code>)</li>
+      <li><strong>RHEL 9</strong> — RHSA-2026:87072 (<code>php:8.2</code>), RHSA-2026:87079 (<code>php:8.3</code>), RHSA-2026:87151 (<code>php</code>)</li>
+      <li><strong>Red Hat Hardened Images</strong> — RHSA-2026:87414</li>
+    </ul>
+    <div class="callout warn">
+      <strong>Remi's RPM repository had no updates on release day</strong>
+      <p>The PHP advisory says so explicitly: if you depend on <code>rpms.remirepo.net</code>, switch to
+      distribution packages or build from source so you can apply the update immediately. Don't wait
+      on a third-party repo for this one.</p>
+    </div>
+
+    <h3>Alpine Linux</h3>
+<pre><code>apk update &amp;&amp; apk upgrade -U
+apk policy php84 php83 | grep -E '^php|version'
+rc-service php-fpm84 restart 2&gt;/dev/null || service php-fpm84 restart</code></pre>
+    <p>
+      Verify against <a href="https://secdb.alpinelinux.org/">Alpine's secdb</a> for your release —
+      at the time this page was written I could not find CVE entries for either ID in the
+      <code>main</code> or <code>community</code> trackers, so do not treat "no entry" as "not
+      affected". Confirm the installed <code>php8x</code> version is at or above the upstream fixed
+      release for that branch.
+    </p>
+
+    <h3>Docker / containers</h3>
+    <p>
+      Docker Hub overwrote the official <code>php</code> image tags with patched builds at release
+      time. Rebuilding on the same mutable tag is not enough — a running container keeps the old
+      layers until you pull and recreate.
+    </p>
+<pre><code>docker pull php:8.4-fpm
+docker compose build --pull --no-cache
+docker compose up -d --force-recreate
+
+<span class="c"># verify inside the running container, not on the host</span>
+docker compose exec -T app php -v | head -1
+
+<span class="c"># bake the mitigation into the image rather than `docker exec`-ing it</span>
+<span class="c"># Dockerfile:</span>
+<span class="c">#   RUN printf 'session.upload_progress.enabled=Off\nfatal_error_backtraces=Off\n' \</span>
+<span class="c">#       &gt; /usr/local/etc/php/conf.d/zz-php2shell.ini</span></code></pre>
+    <p>
+      Also fix the PHP version pinned in <code>composer.json</code> (<code>config.platform.php</code>),
+      any <code>.php-version</code> / <code>.tool-versions</code> file, and the version passed to
+      <code>setup-php</code> in CI — those pins rebuild the vulnerable runtime on the next deploy.
+    </p>
+
+    <h3>cPanel / WHM and CloudLinux</h3>
+    <p>
+      Multi-PHP boxes are the trap here: <code>ea-php74</code>, <code>ea-php81</code>,
+      <code>ea-php82</code>, <code>ea-php83</code>, <code>ea-php84</code> and CloudLinux
+      <code>alt-php*</code> are <em>separate packages</em>, and a fix for one does not fix the others.
+      Update through WHM, then verify package-by-package by changelog rather than by version string —
+      cPanel often keeps the upstream version number and backports the patch.
+    </p>
+<pre><code><span class="c"># cPanel-provided update path</span>
+/scripts/upcp --force
+
+<span class="c"># Verify per package, by changelog — not by version number</span>
+for p in $(rpm -qa 'ea-php*-php-common' 'alt-php*-common' | sort); do
+  printf '%-56s ' "$p"
+  rpm -q --changelog "$p" | head -30 | grep -q 'CVE-2026-109619' &amp;&amp; echo FIX || echo 'NO FIX'
+done
+
+<span class="c"># Recycle every ea-php-fpm service that is running</span>
+for s in $(systemctl list-units --type=service --state=running --no-legend \
+          | awk '/ea-php.*fpm/{print $1}'); do
+  systemctl restart "$s"
+done</code></pre>
+
+    <h3>Plesk</h3>
+<pre><code>plesk installer update
+<span class="c"># then restart the handlers you actually use</span>
+systemctl restart plesk-php*-fpm 2&gt;/dev/null || true
+systemctl restart sw-engine psa 2&gt;/dev/null || true</code></pre>
+    <p>Plesk keeps its own PHP builds under <code>/opt/plesk/php/*</code>, each with its own <code>php.ini</code> — check every version you have installed, not just the default.</p>
+
+    <h3>Windows</h3>
+    <p>
+      Download the fixed Windows binaries from the
+      <a href="https://www.php.net/downloads.php?os=windows">PHP downloads page</a> and replace the
+      install directory, then restart the service hosting it (IIS via FastCGI, Apache, or whatever
+      runs <code>php-cgi.exe</code>). Remember that desktop apps and appliances ship their own private
+      <code>php.exe</code> — those need the vendor's update.
+    </p>
+<pre><code>php -v
+<span class="c"># IIS: restart the app pool / w3wp, not just the PHP folder</span>
+iisreset /restart</code></pre>
+
+    <h3>From source</h3>
+<pre><code>./configure &lt;your existing flags&gt;
+make -j"$(nproc)"
+sudo make install
+sudo systemctl restart php-fpm</code></pre>
+    <p>
+      For 7.4 / 8.0 / 8.1 the PHP team published minimal backports rather than releases:
+      <a href="https://github.com/php/php-src/tree/PHP-7.4-CVE-2026-109618-109619">PHP-7.4-CVE-2026-109618-109619</a>,
+      <a href="https://github.com/php/php-src/tree/PHP-8.0-CVE-2026-109618-109619">PHP-8.0-…</a>,
+      <a href="https://github.com/php/php-src/tree/PHP-8.1-CVE-2026-109618-109619">PHP-8.1-…</a>.
+      These exist to keep you off the internet while you plan a real upgrade — 8.1 is unsupported and
+      receives nothing else.
+    </p>
+  </section>
+
+  <!-- 6 -->
+  <section id="verify">
+    <h2><span class="num">06</span> Verify the fix actually took</h2>
+    <p class="sub">A green package version is not proof. Three checks, in increasing strength.</p>
+
+    <h4>1 — The CLI reports the fixed version</h4>
+<pre><code>php -v | head -1
+<span class="c"># expect: PHP 8.5.12 / 8.4.27 / 8.3.36 / 8.2.35 (or a distro build with the CVE in its changelog)</span>
+
+<span class="c"># distro packages often keep the upstream number — check the changelog instead:</span>
+dpkg -s php8.3-fpm | grep ^Version
+apt-get changelog php8.3-fpm 2&gt;/dev/null | grep -m2 'CVE-2026-1096'
+rpm -q --changelog php-fpm | grep -m2 'CVE-2026-1096'</code></pre>
+
+    <h4>2 — The SAPI that serves traffic reports it too</h4>
+<pre><code>php-fpm -i 2&gt;/dev/null | grep -m1 'PHP Version'
+<span class="c"># and the CLI-vs-FPM mismatch that fools people:</span>
+sudo ls -l /proc/$(pgrep -o -f 'php-fpm: pool')/exe</code></pre>
+    <p>
+      On multiversion boxes the CLI, FPM, and mod_php can be three different builds. The only version
+      that matters is the one answering HTTP.
+    </p>
+
+    <h4>3 — The running workers are using the new binary</h4>
+    <p>
+      Installing a package replaces the file on disk. Processes keep executing the old code from
+      memory until they're recycled — <code>php -v</code> will happily print the new version while the
+      vulnerable engine is still serving requests. Compare each worker's start time against the
+      binary's mtime:
+    </p>
+<pre><code>for pid in $(pgrep -f 'php-fpm|apache2|httpd|php-cgi'); do
+  exe=$(readlink -f /proc/$pid/exe 2&gt;/dev/null) || continue
+  started=$(ps -o lstart= -p "$pid" 2&gt;/dev/null)
+  newer=$(find "$exe" -newermt "$started" 2&gt;/dev/null)
+  [ -n "$newer" ] &amp;&amp; echo "STALE $pid  $exe  started:$started"
+done
+<span class="c"># no output = every worker is running a binary newer than its start time</span></code></pre>
+
+    <div class="callout good">
+      <strong>Then make one live request</strong>
+      <p>Serve a temp file that prints <code>PHP_VERSION</code> and the two relevant ini values, confirm
+      the numbers, then delete it. That's the only check that proves what your visitors are getting.</p>
+    </div>
+<pre><code>php -i | grep -E 'session.upload_progress.enabled|fatal_error_backtraces'</code></pre>
+    <p>
+      Note that <code>php -i</code> from the CLI shows CLI ini, which can differ from FPM pool
+      <code>php_admin_value</code> and from <code>.htaccess</code>/<code>php_value</code> in Apache.
+      Check per-pool if you have several.
+    </p>
+  </section>
+
+  <!-- 7 -->
+  <section id="mitigate">
+    <h2><span class="num">07</span> If you cannot patch today</h2>
+    <p class="sub">These reduce exposure to specific demonstrated paths. None of them makes a server safe, and PHP says so in both advisories.</p>
+
+    <h3>For CVE-2026-109618 (OOM corruption)</h3>
+    <p>Remove the predictable memory-limit failure the exploit steers into:</p>
+<pre><code><span class="c"># php.ini — and make sure nothing below can put a finite limit back</span>
+memory_limit = -1
+
+<span class="c"># Prefer an admin-scoped setting the app can't override:</span>
+<span class="c"># FPM pool (php_admin_value, NOT php_value)</span>
+php_admin_value[memory_limit] = -1
+<span class="c"># Apache</span>
+php_admin_value memory_limit -1</code></pre>
+    <ul>
+      <li><strong>Bound request size independently of PHP.</strong> <code>post_max_size = 8M</code> if the app takes no uploads, <code>32M</code> if it does, with <code>upload_max_filesize</code> below it.</li>
+      <li><strong>Enforce limits at the proxy too</strong> — decoded request size, field count, multipart part count, header count, nesting depth — and make sure those limits cover requests with no usable <code>Content-Length</code>. That last clause is the one most configs miss.</li>
+      <li><strong>Block multipart entirely</strong> at the frontend for apps that never accept file uploads.</li>
+      <li><strong>Use a container/cgroup <code>memory.max</code></strong> as an availability boundary, ideally killing only the affected worker.</li>
+      <li><strong>Do not use <code>RLIMIT_AS</code> or <code>RLIMIT_DATA</code></strong> as a substitute. When the limit is hit, <code>mmap()</code> fails and PHP takes the vulnerable <code>longjmp()</code> path — you'd be recreating the bug on purpose.</li>
+    </ul>
+
+    <h3>For CVE-2026-109619 (stale global state)</h3>
+<pre><code><span class="c">; /etc/php/8.5/fpm/conf.d/99-php2shell.ini  (restart every worker after)</span>
+session.upload_progress.enabled = 0
+fatal_error_backtraces = 0        <span class="c">; PHP 8.5 only — confirmed mod_php exploit path</span>
+
+<span class="c">; verify the FPM pools actually picked it up:</span>
+php-fpm -i 2&gt;/dev/null | grep -E 'upload_progress.enabled|fatal_error_backtraces'</code></pre>
+    <ul>
+      <li>Put it in <code>php.ini</code>, an FPM pool or server config that applies <em>before request parsing</em>. <code>ini_set()</code> and <code>.user.ini</code> are too late and do nothing here.</li>
+      <li><strong>Restart every worker</strong> after changing it. A config file edit alone changes nothing in a running pool.</li>
+      <li><strong>Remove invalid or deprecated per-request INI overrides</strong> — <code>.htaccess</code> <code>php_value</code>, Apache <code>php_admin_*</code>, nginx <code>PHP_VALUE</code>/<code>PHP_ADMIN_VALUE</code> — because a warning raised while applying them is the confirmed consumer. This is common on panels like CloudPanel, which send <code>fastcgi_param PHP_VALUE</code> with <code>memory_limit</code>, <code>post_max_size</code> and <code>date.timezone</code> to every site.</li>
+      <li><strong>Fix attacker-reachable fatal errors and timeouts</strong> — in callbacks, upload/import processing, destructors, serialization, output handlers and cleanup. Every reachable fatal is a potential producer.</li>
+      <li><strong>Blunt instrument:</strong> <code>pm.max_requests = 1</code> makes each worker handle one request then exit, which breaks the producer/consumer pairing. Costs performance; worth it on a small critical host while you stage the upgrade.</li>
+    </ul>
+    <div class="callout warn">
+      <strong>The isolation route</strong>
+      <p>Both CERT-EU and the NSA recommend removing the exposure instead of tuning it: put the
+      application behind a VPN or an IP allowlist, or take it offline until patched. For an internal
+      tool that no stranger needs to reach, that's often faster and more honest than a stack of ini
+      workarounds that only close the paths researchers have published.</p>
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="detect">
+    <h2><span class="num">08</span> Detect exploitation attempts</h2>
+    <p class="sub">You will not find these in an application log — the attack completes before your code runs.</p>
+
+    <h3>What to hunt for</h3>
+    <ul>
+      <li><strong>Unexpected children of PHP processes.</strong> <code>php-fpm</code>, <code>apache2</code> or <code>php-cgi</code> spawning <code>sh</code>, <code>bash</code>, <code>nc</code>, <code>curl</code>, <code>wget</code>, <code>python</code> or <code>perl</code> is the loudest signal there is.</li>
+      <li><strong>Reverse-shell shapes</strong> in command lines: <code>/dev/tcp/</code>, <code>mkfifo</code>, <code>fsockopen</code>, <code>bash -i</code>.</li>
+      <li><strong>Multipart requests without a usable <code>Content-Length</code></strong>, or with an absurd number of part headers — the published OOM approach.</li>
+      <li><strong><code>PHP_SESSION_UPLOAD_PROGRESS</code></strong> in request bodies where your app has no upload form.</li>
+      <li><strong>New files in web roots</strong>, modified <code>.htaccess</code>, new cron jobs, new local users, outbound connections from the web tier.</li>
+    </ul>
+
+<pre><code><span class="c"># Quick process-tree triage — anything hanging off a PHP worker that isn't a socket deserves a look</span>
+ps -eo pid,ppid,user,etime,cmd --forest | grep -A3 -E 'php-fpm|php-cgi|apache2|httpd' | head -40
+
+<span class="c"># Reverse-shell patterns in current command lines</span>
+ps auxww | grep -E '/dev/tcp/|mkfifo|nc -e|bash -i' | grep -v grep
+
+<span class="c"># Web-root drift (tune to your tree)</span>
+find /var/www -type f -newermt '-7 days' -print 2&gt;/dev/null | head -50</code></pre>
+
+    <p>
+      For ongoing monitoring, Florian Roth's
+      <a href="https://github.com/Neo23x0/process-watcher/tree/main/emerging-threats/php-rce-october-26">process-watcher profile for this event</a>
+      logs every program a PHP process starts, with its command line. It records after the fact and
+      prevents nothing — which is exactly right for a detector, but means it must already be running
+      before an attacker arrives.
+    </p>
+
+    <div class="callout info">
+      <strong>Memory disclosure leaves no shell</strong>
+      <p>If both bugs can leak process memory, a quiet hit looks like "nothing happened" — plus
+      credentials that later appear somewhere else. If you were unpatched and exposed, rotate the
+      secrets that were reachable from that worker regardless of whether you find a shell:
+      database passwords, API keys, session signing keys, and TLS private keys.</p>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section id="compromised">
+    <h2><span class="num">09</span> If you think you were hit</h2>
+    <div class="card">
+      <div class="step">
+        <div class="n">1</div>
+        <div class="b">
+          <strong>Isolate, don't reboot</strong>
+          <p>Pull it from the network or firewall it. Rebooting destroys volatile evidence — process
+          trees and <code>/proc</code> contents are exactly what you need.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">2</div>
+        <div class="b">
+          <strong>Capture state before anything else</strong>
+          <p>Preserve web server logs, PHP-FPM logs, auth logs, <code>ps</code> output and
+          <code>/proc/&lt;pid&gt;/*</code> for the PHP workers, plus a file listing of web roots.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">3</div>
+        <div class="b">
+          <strong>Look for persistence</strong>
+          <p>Web shells (obfuscated files, <code>eval</code>/<code>base64_decode</code> chains), new
+          cron entries, systemd units, SSH <code>authorized_keys</code>, new local accounts, and any
+          change to <code>.htaccess</code>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">4</div>
+        <div class="b">
+          <strong>Rebuild from a known-good image</strong>
+          <p>For memory-corruption RCE, "clean up the shell we found" is not a recovery strategy. Rebuild
+          on a patched runtime, restore data deliberately, then rotate every credential the host could
+          reach.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="n">5</div>
+        <div class="b">
+          <strong>Report it</strong>
+          <p>If it's a customer-facing incident, check your breach-notification obligations — GDPR,
+          state laws, or contract language. If you're in the EU, CERT-EU's advisory is the reference
+          your regulator will recognise.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section id="eol">
+    <h2><span class="num">10</span> Stuck on an EOL branch</h2>
+    <p class="sub">This is the uncomfortable section. Most of the affected installs are not on 8.4.</p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Branch</th><th>Status</th><th>Realistic options</th></tr></thead>
+        <tbody>
+          <tr><td>8.2</td><td>Supported until <strong>31 Dec 2026</strong></td><td>Apply 8.2.35 today. Then treat the upgrade as a Q1 project — after December there are no more fixes at all.</td></tr>
+          <tr><td>8.1 / 8.0 / 7.4</td><td>EOL; source backports published</td><td>Vendor backport (Debian/Ubuntu ESM, RHEL ELS), build from the published backport branch, or upgrade. There will be no 7.4.34 release.</td></tr>
+          <tr><td>5.4 – 7.3</td><td>EOL; no project fix</td><td>Upgrade. Failing that: isolate from the internet, or pay an LTS vendor that still backports (and confirm they shipped this one).</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <strong>Shared hosting and managed panels</strong>
+      <p>You cannot patch these yourself, so make the provider answer a specific question: <em>which
+      PHP branches did you deploy the CVE-2026-109618 / -109619 fix to, and when were the workers
+      restarted?</em> "We're on it" is not an answer. Ask for the branch list and the restart time, in
+      writing. If your plan lets you select a PHP version in the panel, check that every version you
+      can select has been fixed.</p>
+    </div>
+
+    <p>
+      While you're making that call, remember the underlying point: an EOL PHP branch does not just
+      lack this one fix, it lacks all of them. This event is the argument for budgeting the upgrade,
+      not just a reason to apply a workaround.
+    </p>
+  </section>
+
+  <!-- 11 -->
+  <section id="faq">
+    <h2><span class="num">11</span> FAQ</h2>
+
+    <h4>I updated WordPress / my plugins / ran composer update. Am I fine?</h4>
+    <p>No. The vulnerabilities are in the PHP runtime, below any application code. Updating the app
+    changes nothing about this. Check <code>php -v</code> on the server.</p>
+
+    <h4>I'm behind a WAF — am I covered?</h4>
+    <p>Partly, temporarily, and not reliably. Cloudflare turned rules on before the patch and still
+    reported attackers mutating payloads to get around them. A WAF buys time to patch; it isn't a
+    substitute, and it does nothing for an attacker already inside the network.</p>
+
+    <h4>Does <code>session.upload_progress.enabled=0</code> fix it?</h4>
+    <p>No. It closes the confirmed session path for bug #2 and it is worth doing permanently, but PHP
+    is explicit that other producers and consumers exist and that no configuration is a complete
+    mitigation.</p>
+
+    <h4>Is it being exploited in the wild?</h4>
+    <p>Active exploitation <em>attempts</em> were observed from roughly 14:19 UTC on 21 October —
+    watchTowr, Cloudflare, Hadrian, Patchstack and Vega all reported them, and Hadrian described
+    at-scale attempts via the session upload-progress path. No publicly confirmed successful
+    compromise of a named server as of this writing. "Attempts, not yet confirmed successes" is not
+    a reason to schedule the patch for next week; the reliability of these chains improves with
+    iteration.</p>
+
+    <h4>Is it in CISA KEV?</h4>
+    <p>Not as of catalog 2026.10.21 (released 21 October 14:04 UTC). Check
+    <a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog">the live catalog</a> before
+    relying on that.</p>
+
+    <h4>We're on Windows / IIS. Same story?</h4>
+    <p>Same bug, different packaging. Fixed Windows binaries are on php.net; the risk profile depends
+    on whether you run FastCGI (FPM-like) or something mod_php-like. Replace the binaries and
+    restart the app pool — and check any bundled <code>php.exe</code> shipped inside a vendor
+    application separately.</p>
+
+    <h4>How do I know the patch is actually live?</h4>
+    <p>Two things: the binary version, and that the workers were restarted after the package landed.
+    Section 6 has the loop that flags workers still running a replaced binary. A patched disk with
+    stale workers is still a vulnerable server.</p>
+
+    <h4>Where can I follow this?</h4>
+    <p>The <a href="https://www.php.net/archive/2026.php#2026-10-21-5">PHP advisory</a> is the source
+    of truth and gets updated. watchTowr and CERT-EU are the fastest secondary sources. Avoid
+    copy-pasting exploits from "PoC" repos onto anything you don't own — and if you're testing,
+    test against a local container.</p>
+  </section>
+
+  <!-- 12 -->
+  <section id="sources">
+    <h2><span class="num">12</span> Primary sources</h2>
+    <p class="sub">Everything above is drawn from these. If any of them disagrees with me, they win.</p>
+    <ol class="srcline">
+      <li><a href="https://www.php.net/archive/2026.php#2026-10-21-5">PHP security advisory — critical RCE vulnerabilities, update now</a> (php.net, 21 Oct 2026)</li>
+      <li><a href="https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w">GHSA-w8hw-w9fx-j79w — RCE via OOM corruption</a> (php-src advisory)</li>
+      <li><a href="https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp">GHSA-6wmf-4rv5-p3rp — RCE via stale global state</a> (php-src advisory)</li>
+      <li><a href="https://nvd.nist.gov/vuln/detail/CVE-2026-109618">NVD — CVE-2026-109618</a> · <a href="https://nvd.nist.gov/vuln/detail/CVE-2026-109619">CVE-2026-109619</a> (CVSS v4.0 9.2 / v3.1 9.8)</li>
+      <li><a href="https://cert.europa.eu/publications/security-advisories/2026-018/">CERT-EU Security Advisory 2026-018 — Critical Vulnerabilities in PHP</a> (21 Oct 2026)</li>
+      <li><a href="https://www.wiz.io/blog/php2shell-php-rce">Wiz Research — PHP2Shell: AI uncovers critical RCE vulnerabilities affecting 70% of the Internet</a></li>
+      <li><a href="https://watchtowr.com/intelligence/php-cve-2026-109618-faq/">watchTowr — CVE-2026-109618 FAQ</a> · <a href="https://watchtowr.com/intelligence/php-remote-code-execution-php2shell/">php2shell exploitation update</a></li>
+      <li><a href="https://security-tracker.debian.org/tracker/CVE-2026-109618">Debian security tracker</a> — DSA-6574-1, DLA-4848-1</li>
+      <li><a href="https://ubuntu.com/security/CVE-2026-109618">Ubuntu CVE tracker</a> — USN-8948-1, USN-8948-2</li>
+      <li><a href="https://access.redhat.com/security/cve/CVE-2026-109618">Red Hat CVE-2026-109618</a> — RHSA-2026:87070 / 87071 / 87072 / 87079 / 87151, RHSA-2026:87414</li>
+      <li><a href="https://www.cisa.gov/known-exploited-vulnerabilities-catalog">CISA Known Exploited Vulnerabilities catalog</a> — checked, not listed as of 2026.10.21</li>
+      <li><a href="https://thephp.foundation/blog/2026/10/21/todays-php-security-release-and-how-were-strengthening-php-security/">The PHP Foundation — today's PHP security release</a></li>
+    </ol>
+  </section>
+
+</div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><strong>Written 22 October 2026, from the primary advisories.</strong> Independent write-up by
+    <a href="https://github.com/nwfella">nwfella</a>. Not affiliated with or endorsed by the PHP Group,
+    the PHP Foundation, Wiz or any vendor named here.</p>
+    <p>Version numbers and package names were checked against the PHP advisories and the Debian, Ubuntu
+    and Red Hat trackers on the date above. Vendor states move — re-check your own tracker before
+    assuming a package is clean, and read the advisories linked in section 12 before making a
+    security decision on this page alone.</p>
+    <p>Corrections welcome via an issue on this repository. If you're a client reading this: the
+    two-minute version is <a href="#tldr">section 1</a>.</p>
+  </div>
+</footer>
+
+<script>
+document.querySelectorAll('pre').forEach(function(pre){
+  var btn=document.createElement('button');
+  btn.className='copy';btn.type='button';btn.textContent='copy';
+  btn.addEventListener('click',function(){
+    var text=pre.querySelector('code').innerText;
+    var done=function(){btn.textContent='copied';setTimeout(function(){btn.textContent='copy';},1400);};
+    if(navigator.clipboard&&navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done,done);
+    }else{
+      var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);
+      ta.select();try{document.execCommand('copy');}catch(e){}
+      document.body.removeChild(ta);done();
+    }
+  });
+  pre.appendChild(btn);
+});
+</script>
+
+</body>
+</html>
