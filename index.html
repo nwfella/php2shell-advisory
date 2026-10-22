@@ -97,16 +97,17 @@
   .callout{
     border-radius:10px;padding:15px 18px;margin:0 0 18px;border:1px solid;font-size:15.4px;
   }
-  .callout strong{display:block;margin-bottom:3px;font-size:14px;letter-spacing:.02em}
+  .callout > strong:first-child{display:block;margin-bottom:3px;font-size:14px;letter-spacing:.02em}
+  .callout p strong{font-weight:600;color:#eef3fb}
   .callout p:last-child{margin-bottom:0}
   .callout.bad{border-color:rgba(255,92,92,.45);background:rgba(255,92,92,.07)}
-  .callout.bad strong{color:#ff9d9d}
+  .callout.bad > strong:first-child{color:#ff9d9d}
   .callout.warn{border-color:rgba(255,176,32,.4);background:rgba(255,176,32,.06)}
-  .callout.warn strong{color:#ffc04d}
+  .callout.warn > strong:first-child{color:#ffc04d}
   .callout.good{border-color:rgba(61,220,151,.38);background:rgba(61,220,151,.06)}
-  .callout.good strong{color:#6fe8b4}
+  .callout.good > strong:first-child{color:#6fe8b4}
   .callout.info{border-color:rgba(90,169,255,.35);background:rgba(90,169,255,.06)}
-  .callout.info strong{color:#8cc5ff}
+  .callout.info > strong:first-child{color:#8cc5ff}
 
   .scroll{overflow-x:auto;margin:0 0 18px;border:1px solid var(--line);border-radius:10px}
   table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:520px}
@@ -408,7 +409,7 @@
         <thead><tr><th style="width:150px">When (UTC)</th><th>What happened</th></tr></thead>
         <tbody>
           <tr><td>20 Oct</td><td>A Hacker News post claims two PHP RCEs rated CVSS 10.0 with the two CVE IDs, scheduled for 22 October disclosure. The poster admits "source: trust me, bro". The post is later deleted.</td></tr>
-          <tr><td>20 Oct</td><td>research (watchTowr et al.) confirm the bugs are real. PHP publishes an <em>advance notice</em>: two critical vulnerabilities, CVSS v4.0 9.2, release scheduled 21 Oct 14:00 UTC — reserving the right to ship early if details go public.</td></tr>
+          <tr><td>20 Oct</td><td>watchTowr and other researchers confirm the bugs are real. PHP publishes an <em>advance notice</em>: two critical vulnerabilities, CVSS v4.0 9.2, release scheduled 21 Oct 14:00 UTC — reserving the right to ship early if details go public.</td></tr>
           <tr><td>21 Oct ~13:30</td><td>PHP releases 8.5.12, 8.4.27, 8.3.36 and 8.2.35. Advisories published ~13:34; CVE records ~13:48.</td></tr>
           <tr><td>21 Oct</td><td>CERT-EU publishes advisory 2026-018. The US NSA issues a short statement advising organisations that cannot update immediately to take affected systems offline.</td></tr>
           <tr><td>21 Oct ~14:19</td><td>watchTowr reports observing active exploitation <em>attempts</em> against both CVEs. Cloudflare reports attack traffic and attackers mutating payloads around its WAF rules, which it enabled by default before the patch. Hadrian reports attempts at scale via the session upload-progress path.</td></tr>
